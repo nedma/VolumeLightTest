@@ -79,9 +79,9 @@ namespace UnityStandardAssets.ImageEffects
             int rtW = source.width / divider;
             int rtH = source.height / divider;
 
-            RenderTexture lrColorB;
             RenderTexture lrDepthBuffer = RenderTexture.GetTemporary (rtW, rtH, 0);
 
+            // 1. Calculate sky light shaft with occlusion
             // mask out everything except the skybox
             // we have 2 methods, one of which requires depth buffer support, the other one is just comparing images
 
@@ -89,7 +89,8 @@ namespace UnityStandardAssets.ImageEffects
             sunShaftsMaterial.SetVector ("_SunPosition", new Vector4 (v.x, v.y, v.z, maxRadius));
             sunShaftsMaterial.SetVector ("_SunThreshold", sunThreshold);
 
-            if (!useDepthTexture) {
+            if (!useDepthTexture)
+            {
                 var format= GetComponent<Camera>().hdr ? RenderTextureFormat.DefaultHDR: RenderTextureFormat.Default;
                 RenderTexture tmpBuffer = RenderTexture.GetTemporary (source.width, source.height, 0, format);
                 RenderTexture.active = tmpBuffer;
@@ -99,14 +100,17 @@ namespace UnityStandardAssets.ImageEffects
                 Graphics.Blit (source, lrDepthBuffer, sunShaftsMaterial, 3);
                 RenderTexture.ReleaseTemporary (tmpBuffer);
             }
-            else {
+            else
+            {
                 Graphics.Blit (source, lrDepthBuffer, sunShaftsMaterial, 2);
             }
 
             // paint a small black small border to get rid of clamping problems
             DrawBorder (lrDepthBuffer, simpleClearMaterial);
 
-            // radial blur:
+
+            // 2. radial blur:
+            RenderTexture lrColorB;
 
             radialBlurIterations = Mathf.Clamp (radialBlurIterations, 1, 4);
 
@@ -131,6 +135,7 @@ namespace UnityStandardAssets.ImageEffects
                 ofs = sunShaftBlurRadius * (((it2 * 2.0f + 2.0f) * 6.0f)) / 768.0f;
                 sunShaftsMaterial.SetVector ("_BlurRadius4", new Vector4 (ofs, ofs, 0.0f, 0.0f) );
             }
+
 
             // put together:
 

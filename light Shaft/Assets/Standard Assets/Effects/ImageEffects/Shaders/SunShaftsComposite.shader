@@ -52,25 +52,34 @@ Shader "Hidden/SunShaftsComposite" {
 		return o;
 	}
 		
-	half4 fragScreen(v2f i) : SV_Target { 
+	// blend light shaft image to screen
+	half4 fragScreen(v2f i) : SV_Target 
+	{ 
 		half4 colorA = tex2D (_MainTex, i.uv.xy);
-		#if UNITY_UV_STARTS_AT_TOP
+		
+	#if UNITY_UV_STARTS_AT_TOP
 		half4 colorB = tex2D (_ColorBuffer, i.uv1.xy);
-		#else
+	#else
 		half4 colorB = tex2D (_ColorBuffer, i.uv.xy);
-		#endif
+	#endif
 		half4 depthMask = saturate (colorB * _SunColor);	
+	
 		return 1.0f - (1.0f-colorA) * (1.0f-depthMask);	
 	}
 
-	half4 fragAdd(v2f i) : SV_Target { 
-		half4 colorA = tex2D (_MainTex, i.uv.xy);
-		#if UNITY_UV_STARTS_AT_TOP
-		half4 colorB = tex2D (_ColorBuffer, i.uv1.xy);
-		#else
+
+	// add light shaft image to screen
+	half4 fragAdd(v2f i) : SV_Target 
+	{ 
+		half4 colorA = tex2D (_MainTex, i.uv.xy);		// screen image
+
+	#if UNITY_UV_STARTS_AT_TOP
+		half4 colorB = tex2D (_ColorBuffer, i.uv1.xy);	// light shaft image
+	#else
 		half4 colorB = tex2D (_ColorBuffer, i.uv.xy);
-		#endif
+	#endif
 		half4 depthMask = saturate (colorB * _SunColor);	
+		
 		return colorA + depthMask;	
 	}
 	
@@ -96,11 +105,14 @@ Shader "Hidden/SunShaftsComposite" {
 		return color / SAMPLES_FLOAT;
 	}	
 	
-	half TransformColor (half4 skyboxValue) {
+	half TransformColor (half4 skyboxValue) 
+	{
 		return dot(max(skyboxValue.rgb - _SunThreshold.rgb, half3(0,0,0)), half3(1,1,1)); // threshold and convert to greyscale
 	}
 	
-	half4 frag_depth (v2f i) : SV_Target {
+	// extract light shaft color when depth enabled
+	half4 frag_depth (v2f i) : SV_Target 
+	{
 		#if UNITY_UV_STARTS_AT_TOP
 		float depthSample = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv1.xy);
 		#else
@@ -128,29 +140,31 @@ Shader "Hidden/SunShaftsComposite" {
 		return outColor;
 	}
 	
-	half4 frag_nodepth (v2f i) : SV_Target {
-		#if UNITY_UV_STARTS_AT_TOP
+	// extract light shaft color when no depth
+	half4 frag_nodepth (v2f i) : SV_Target 
+	{
+	#if UNITY_UV_STARTS_AT_TOP
 		float4 sky = (tex2D (_Skybox, i.uv1.xy));
-		#else
+	#else
 		float4 sky = (tex2D (_Skybox, i.uv.xy));		
-		#endif
+	#endif
 		
 		float4 tex = (tex2D (_MainTex, i.uv.xy));
 		
 		// consider maximum radius
-		#if UNITY_UV_STARTS_AT_TOP
+	#if UNITY_UV_STARTS_AT_TOP
 		half2 vec = _SunPosition.xy - i.uv1.xy;
-		#else
+	#else
 		half2 vec = _SunPosition.xy - i.uv.xy;		
-		#endif
-		half dist = saturate (_SunPosition.w - length (vec));			
+	#endif
+		half dist = saturate (_SunPosition.w - length (vec));
 		
 		half4 outColor = 0;		
 		
 		// find unoccluded sky pixels
 		// consider pixel values that differ significantly between framebuffer and sky-only buffer as occluded
 		if (Luminance ( abs(sky.rgb - tex.rgb)) < 0.2)
-			outColor = TransformColor (sky) * dist;
+			outColor = TransformColor (sky) * dist;		// light shaft color is simply inversely proportional to the distance to the sun
 		
 		return outColor;
 	}	
@@ -161,6 +175,7 @@ Shader "Hidden/SunShaftsComposite" {
 	
 Subshader {
   
+		// pass 0 - screen blend
  Pass {
 	  ZTest Always Cull Off ZWrite Off
 
@@ -172,6 +187,7 @@ Subshader {
       ENDCG
   }
   
+	 // pass 1 - radial blur
  Pass {
 	  ZTest Always Cull Off ZWrite Off
 
@@ -183,6 +199,7 @@ Subshader {
       ENDCG
   }
   
+	 // pass 2
   Pass {
 	  ZTest Always Cull Off ZWrite Off
 
@@ -194,6 +211,7 @@ Subshader {
       ENDCG
   }
   
+	 // pass 3
   Pass {
 	  ZTest Always Cull Off ZWrite Off
 
@@ -205,6 +223,7 @@ Subshader {
       ENDCG
   } 
   
+	 // pass 4 - add
   Pass {
 	  ZTest Always Cull Off ZWrite Off
 
